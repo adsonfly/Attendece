@@ -1,0 +1,441 @@
+/* Main Styles */
+:root {
+  --primary-color: #4a6bff;
+  --secondary-color: #f8f9fa;
+  --text-color: #212529;
+  --light-text: #6c757d;
+  --border-color: #dee2e6;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f5f7fa;
+  color: var(--text-color);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Form Styles */
+.card {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 30px;
+  margin: 30px 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn:hover {
+  background-color: #3a5aee;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn-outline:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+/* Header & Navigation */
+.header {
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 15px 0;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+/* Dashboard Styles */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.attendance-list {
+  list-style: none;
+}
+
+.attendance-item {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 15px;
+  margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.attendance-info {
+  flex-grow: 1;
+}
+
+.attendance-name {
+  font-weight: 500;
+  font-size: 18px;
+}
+
+.attendance-date {
+  color: var(--light-text);
+  font-size: 14px;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-present {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: var(--success-color);
+}
+
+.status-absent {
+  background-color: rgba(220, 53, 69, 0.1);
+  color: var(--danger-color);
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  padding: 30px;
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--light-text);
+}
+
+/* Utility Classes */
+.text-center {
+  text-align: center;
+}
+
+.mt-4 {
+  margin-top: 20px;
+}
+
+.mb-4 {
+  margin-bottom: 20px;
+}
+
+/* Employee Attendance Page Styles */
+.employee-header {
+  margin-bottom: 30px;
+}
+
+.employee-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.employee-info p {
+  background-color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  margin: 0;
+  font-weight: 500;
+}
+
+.attendance-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+}
+
+.btn-success {
+  background-color: var(--success-color);
+}
+
+.btn-success:hover {
+  background-color: #218838;
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.btn-warning {
+  background-color: var(--warning-color);
+  color: #212529;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+}
+
+.status-half-day {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: #856404;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+  
+  .card {
+    padding: 20px;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+  
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .dashboard-header .btn {
+    margin-top: 15px;
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+    width: 100%;
+  }
+  
+  .header {
+    padding: 15px 10px;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .header-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  
+  .btn {
+    padding: 12px !important;
+    font-size: 16px !important;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .employees-container {
+    padding: 0;
+  }
+  
+  .employee-item {
+    flex-direction: column;
+    padding: 15px 10px;
+  }
+  
+  .employee-details {
+    width: 100%;
+    margin-bottom: 15px;
+  }
+  
+  .employee-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .employee-stats {
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  
+  .stat-item {
+    width: 48%;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  
+  /* Modal adjustments */
+  .modal-content {
+    width: 90%;
+    padding: 20px 15px;
+    margin: 20% auto;
+  }
+  
+  input[type="text"],
+  input[type="tel"],
+  input[type="number"] {
+    font-size: 16px; /* Prevents zoom on input focus in iOS */
+  }
+}
+
+/* Attendance page mobile styles */
+@media (max-width: 768px) {
+  .attendance-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .container {
+    flex-direction: column;
+  }
+  
+  table {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  .answer-bar {
+    width: 100%;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .controls label {
+    margin-top: 8px;
+  }
+  
+  .controls select,
+  .controls input {
+    width: 100%;
+  }
+  
+  .controls button {
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  /* Make table scrollable horizontally */
+  .table-container {
+    overflow-x: auto;
+    width: 100%;
+  }
+  
+  /* Fix nav buttons on small screens */
+  .nav-buttons {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .nav-button {
+    flex: 1;
+    margin: 0 5px;
+    text-align: center;
+    font-size: 14px;
+    padding: 8px 5px;
+  }
+} 

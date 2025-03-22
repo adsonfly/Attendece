@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Attendance Tracker</title>
+    <!-- Include jsPDF and autoTable libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f4f7fa;
+        color: #333;
+      }
+
+      .header {
+        position: relative;
+        background: linear-gradient(90deg, #007bff, #0056b3);
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        color: white;
+        margin-bottom: 30px;
+      }
+
+      .header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      .nav-buttons {
+        display: flex;
+        gap: 10px;
+      }
+      
+      .nav-button {
+        padding: 8px 15px;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: none;
+        font-size: 14px;
+      }
+      
+      .btn-dashboard {
+        background-color: #28a745;
+        color: white;
+      }
+      
+      .btn-dashboard:hover {
+        background-color: #218838;
+      }
+      
+      .btn-logout {
+        background-color: #dc3545;
+        color: white;
+      }
+      
+      .btn-logout:hover {
+        background-color: #c82333;
+      }
+
+      .header-contact {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header-contact span {
+        font-size: 16px;
+        font-weight: 500;
+        opacity: 0.9;
+      }
+
+      .header-contact .phone-icon {
+        font-size: 18px;
+      }
+
+      .header-bottom {
+        text-align: center;
+      }
+
+      .header-bottom h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 400;
+        opacity: 0.9;
+      }
+
+      .daily-amount {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .daily-amount label {
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      .daily-amount input {
+        padding: 5px 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        font-size: 14px;
+        width: 100px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+
+      .daily-amount input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        outline: none;
+      }
+
+      .daily-amount input:disabled {
+        background-color: #e0e0e0;
+        cursor: not-allowed;
+      }
+
+      .footer {
+        margin-top: 30px;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .footer-button {
+        padding: 12px 30px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 16px;
+        transition: background-color 0.3s, transform 0.1s;
+      }
+
+      .footer-button:hover {
+        background-color: #218838;
+        transform: translateY(-1px);
+      }
+
+      .footer-button:active {
+        transform: translateY(0);
+      }
+
+      .controls {
+        margin-bottom: 30px;
+        padding: 10px;
+        border-radius: 8px;
+        background-color: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+
+      .controls label {
+        font-weight: 500;
+        color: #555;
+      }
+
+      .controls select,
+      .controls input {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        font-size: 14px;
+        transition: border-color 0.3s, box-shadow 0.3s;
+      }
+
+      .controls select:focus,
+      .controls input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        outline: none;
+      }
+
+      .controls button {
+        padding: 8px 20px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: background-color 0.3s, transform 0.1s;
+      }
+
+      .controls button:hover {
+        background-color: #0056b3;
+        transform: translateY(-1px);
+      }
+
+      .controls button:active {
+        transform: translateY(0);
+      }
+
+      .container {
+        display: flex;
+        gap: 20px;
+      }
+
+      .table-container {
+        flex: 1;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      th,
+      td {
+        padding: 12px 15px;
+        text-align: center;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      th {
+        background-color: #007bff;
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 14px;
+      }
+
+      td {
+        font-size: 14px;
+        color: #444;
+      }
+
+      td select,
+      td input {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        font-size: 14px;
+        transition: border-color 0.3s;
+      }
+
+      td select:focus,
+      td input:focus {
+        border-color: #007bff;
+        outline: none;
+      }
+
+      tr:nth-child(even) {
+        background-color: #f8f9fa;
+      }
+
+      tr:hover {
+        background-color: #f1f3f5;
+        transition: background-color 0.3s;
+      }
+
+      .answer-bar {
+        width: 25%;
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+      }
+
+      .answer-bar div {
+        background-color: #e7f3ff;
+        padding: 12px;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 14px;
+        color: #333;
+        transition: transform 0.3s;
+      }
+
+      .answer-bar div:hover {
+        transform: scale(1.02);
+      }
+
+      .answer-bar span {
+        color: #007bff;
+        font-weight: 600;
+      }
+
+      .attendance-yes {
+        background-color: #e6ffed;
+      }
+
+      .worktime-full {
+        background-color: #d4f7dc;
+      }
+
+      .worktime-half {
+        background-color: #fff9db;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-top">
+        <div class="nav-buttons">
+          <button class="nav-button btn-dashboard" onclick="location.href='/dashboard'">Back to Dashboard</button>
+          <button class="nav-button btn-logout" onclick="logout()">Logout</button>
+        </div>
+        <div class="header-contact">
+          <span class="phone-icon">📞</span>
+          <span>+91 7032338715</span>
+        </div>
+      </div>
+      <div class="header-bottom">
+        <h2 class="header-logo">Elite Workx Fabrication A to Z</h2>
+        <h3 id="monthDisplay">Month</h3>
+        <div class="daily-amount">
+          <label for="dailyAmount">Daily Amount:</label>
+          <input type="number" id="dailyAmount" min="0" value="500" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Control Form -->
+    <div class="controls">
+      <label for="controlMonth">Month:</label>
+      <select id="controlMonth">
+        <option value="0">January</option>
+        <option value="1">February</option>
+        <option value="2">March</option>
+        <option value="3">April</option>
+        <option value="4">May</option>
+        <option value="5">June</option>
+        <option value="6">July</option>
+        <option value="7">August</option>
+        <option value="8">September</option>
+        <option value="9">October</option>
+        <option value="10">November</option>
+        <option value="11">December</option>
+      </select>
+
+      <label for="controlYear">Year:</label>
+      <select id="controlYear"></select>
+
+      <label for="controlDate">Date:</label>
+      <select id="controlDate"></select>
+
+      <label for="controlAttendance">Attendance:</label>
+      <select id="controlAttendance">
+        <option value="NO">NO</option>
+        <option value="YES">YES</option>
+      </select>
+
+      <label for="controlWorkTime">Work/Time:</label>
+      <select id="controlWorkTime">
+        <option value="0">0</option>
+        <option value="HALF">HALF</option>
+        <option value="FULL">FULL</option>
+      </select>
+
+      <label for="controlAmountTaken">Amount/Taken:</label>
+      <input type="number" id="controlAmountTaken" min="0" value="0" />
+
+      <button onclick="updateSelectedRow()">Update</button>
+    </div>
+
+    <!-- Table and Answer Bar Container -->
+    <div class="container">
+      <div class="table-container">
+        <table id="attendanceTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Attendance</th>
+              <th>Work/Time</th>
+              <th>Amount/Taken</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Answer Bar on the Right -->
+      <div class="answer-bar">
+        <div>Total/Present: <span id="totalPresent">0</span></div>
+        <div>Total/Absent: <span id="totalAbsent">0</span></div>
+        <div>Total Earnings: <span id="totalEarning">0</span></div>
+        <div>Amount Taken: <span id="totalAmountTaken">0</span></div>
+        <div>Remaining Amount: <span id="remainingAmount">0</span></div>
+      </div>
+    </div>
+
+    <!-- Footer with Generate PDF button -->
+    <div class="footer">
+      <button class="footer-button" onclick="generatePDF()">
+        Generate PDF
+      </button>
+    </div>
+
+    <script>
+      // Store data in memory and persist with localStorage
+      let tableData = JSON.parse(localStorage.getItem("tableData")) || {};
+      let hasEntryBeenMade = false; // Track if an entry has been made
+
+      // Function to format date as DD-MM-YY
+      function formatDate(date) {
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = String(date.getFullYear()).slice(-2);
+        return `${day}-${month}-${year}`;
+      }
+
+      // Function to populate year dropdown (past 10 years to next 10 years)
+      function populateYearDropdown() {
+        const controlYear = document.getElementById("controlYear");
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear - 10; year <= currentYear + 10; year++) {
+          const option = document.createElement("option");
+          option.value = year;
+          option.textContent = year;
+          controlYear.appendChild(option);
+        }
+        controlYear.value = currentYear;
+      }
+
+      // Function to populate date dropdown for the selected month and year
+      function populateDateDropdown() {
+        const controlMonth = parseInt(
+          document.getElementById("controlMonth").value
+        );
+        const controlYear = parseInt(
+          document.getElementById("controlYear").value
+        );
+        const controlDate = document.getElementById("controlDate");
+        controlDate.innerHTML = ""; // Clear existing options
+
+        const daysInMonth = new Date(
+          controlYear,
+          controlMonth + 1,
+          0
+        ).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(controlYear, controlMonth, day);
+          const dateStr = formatDate(date);
+          const option = document.createElement("option");
+          option.value = dateStr;
+          option.textContent = dateStr;
+          controlDate.appendChild(option);
+        }
+      }
+
+      // Function to update month display
+      function updateMonthDisplay() {
+        const controlMonth = document.getElementById("controlMonth");
+        const controlYear = document.getElementById("controlYear");
+        const monthDisplay = document.getElementById("monthDisplay");
+        monthDisplay.textContent = `${
+          controlMonth.options[controlMonth.selectedIndex].text
+        } ${controlYear.value}`;
+      }
+
+      // Function to generate table rows for the selected month
+      function generateTable() {
+        const controlMonth = parseInt(
+          document.getElementById("controlMonth").value
+        );
+        const controlYear = parseInt(
+          document.getElementById("controlYear").value
+        );
+        const tableBody = document.getElementById("tableBody");
+        tableBody.innerHTML = ""; // Clear existing rows
+
+        const daysInMonth = new Date(
+          controlYear,
+          controlMonth + 1,
+          0
+        ).getDate();
+        const startDate = new Date(controlYear, controlMonth, 1);
+        const endDate = new Date(controlYear, controlMonth, daysInMonth);
+
+        while (startDate <= endDate) {
+          const dateStr = formatDate(startDate);
+          if (!tableData[dateStr]) {
+            tableData[dateStr] = {
+              attendance: "NO",
+              workTime: "0",
+              amountTaken: 0,
+            };
+          }
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+                    <td>${dateStr}</td>
+                    <td>
+                        <select class="attendance" onchange="updateRow('${dateStr}', this)">
+                            <option value="NO">NO</option>
+                            <option value="YES">YES</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select class="worktime" onchange="updateRow('${dateStr}', this)">
+                            <option value="0">0</option>
+                            <option value="HALF">HALF</option>
+                            <option value="FULL">FULL</option>
+                        </select>
+                    </td>
+                    <td><input type="number" class="amount-taken" value="0" onchange="updateRow('${dateStr}', this)" min="0"></td>
+                `;
+          tableBody.appendChild(row);
+
+          const rowData = tableData[dateStr];
+          row.querySelector(".attendance").value = rowData.attendance;
+          row.querySelector(".worktime").value = rowData.workTime;
+          row.querySelector(".amount-taken").value = rowData.amountTaken;
+
+          updateWorkTimeDropdown(row);
+          startDate.setDate(startDate.getDate() + 1);
+        }
+        updateTotals();
+        // Initially disable daily amount input
+        document.getElementById("dailyAmount").disabled = true;
+      }
+
+      // Function to update Work/Time dropdown based on Attendance
+      function updateWorkTimeDropdown(row) {
+        const attendanceSelect = row.querySelector(".attendance");
+        const workTimeSelect = row.querySelector(".worktime");
+        if (attendanceSelect.value === "NO") {
+          workTimeSelect.value = "0";
+          workTimeSelect.disabled = true;
+        } else {
+          workTimeSelect.disabled = false;
+        }
+        applyStyles(row);
+      }
+
+      // Function to apply conditional styles
+      function applyStyles(row) {
+        const attendanceSelect = row.querySelector(".attendance");
+        const workTimeSelect = row.querySelector(".worktime");
+        const attendanceCell = attendanceSelect.parentElement;
+        const workTimeCell = workTimeSelect.parentElement;
+
+        attendanceCell.classList.remove("attendance-yes");
+        workTimeCell.classList.remove("worktime-full", "worktime-half");
+
+        if (attendanceSelect.value === "YES") {
+          attendanceCell.classList.add("attendance-yes");
+        }
+        if (workTimeSelect.value === "FULL") {
+          workTimeCell.classList.add("worktime-full");
+        } else if (workTimeSelect.value === "HALF") {
+          workTimeCell.classList.add("worktime-half");
+        }
+      }
+
+      // Function to update row data and totals
+      function updateRow(dateStr, element) {
+        const row = element.closest("tr");
+        if (!row) return;
+
+        const attendance = row.querySelector(".attendance").value;
+        const workTime = row.querySelector(".worktime").value;
+        const amountTaken =
+          parseInt(row.querySelector(".amount-taken").value) || 0;
+
+        // Check if this is a meaningful update (not just loading default values)
+        const rowData = tableData[dateStr];
+        if (
+          rowData.attendance !== attendance ||
+          rowData.workTime !== workTime ||
+          rowData.amountTaken !== amountTaken
+        ) {
+          hasEntryBeenMade = true;
+          // Disable daily amount after first meaningful entry
+          document.getElementById("dailyAmount").disabled = true;
+        }
+
+        tableData[dateStr] = { attendance, workTime, amountTaken };
+        localStorage.setItem("tableData", JSON.stringify(tableData));
+
+        updateWorkTimeDropdown(row);
+        applyStyles(row);
+        updateTotals();
+        updateControlForm(dateStr);
+      }
+
+      // Function to update the control form when a row is selected
+      function updateControlForm(dateStr) {
+        const controlDate = document.getElementById("controlDate");
+        const controlAttendance = document.getElementById("controlAttendance");
+        const controlWorkTime = document.getElementById("controlWorkTime");
+        const controlAmountTaken =
+          document.getElementById("controlAmountTaken");
+
+        controlDate.value = dateStr;
+        const rowData = tableData[dateStr] || {
+          attendance: "NO",
+          workTime: "0",
+          amountTaken: 0,
+        };
+        controlAttendance.value = rowData.attendance;
+        controlWorkTime.value = rowData.workTime;
+        controlAmountTaken.value = rowData.amountTaken;
+      }
+
+      // Function to update a row using the control form
+      function updateSelectedRow() {
+        const dateStr = document.getElementById("controlDate").value;
+        const attendance = document.getElementById("controlAttendance").value;
+        const workTime = document.getElementById("controlWorkTime").value;
+        const amountTaken =
+          parseInt(document.getElementById("controlAmountTaken").value) || 0;
+
+        // Check if this is a meaningful update
+        const rowData = tableData[dateStr] || {
+          attendance: "NO",
+          workTime: "0",
+          amountTaken: 0,
+        };
+        if (
+          rowData.attendance !== attendance ||
+          rowData.workTime !== workTime ||
+          rowData.amountTaken !== amountTaken
+        ) {
+          hasEntryBeenMade = true;
+          // Disable daily amount after first meaningful entry
+          document.getElementById("dailyAmount").disabled = true;
+        }
+
+        tableData[dateStr] = { attendance, workTime, amountTaken };
+        localStorage.setItem("tableData", JSON.stringify(tableData));
+        generateTable();
+      }
+
+      // Function to update totals
+      function updateTotals() {
+        let totalPresent = 0;
+        let totalAbsent = 0;
+        let grossEarning = 0;
+        let totalAmountTaken = 0;
+
+        const dailyAmount =
+          parseInt(document.getElementById("dailyAmount").value) || 500;
+
+        document.querySelectorAll("#tableBody tr").forEach((row) => {
+          const attendance = row.querySelector(".attendance").value;
+          const workTime = row.querySelector(".worktime").value;
+          const amountTaken =
+            parseInt(row.querySelector(".amount-taken").value) || 0;
+
+          if (attendance === "YES") {
+            totalPresent++;
+          } else {
+            totalAbsent++;
+          }
+
+          if (attendance === "YES") {
+            grossEarning +=
+              workTime === "FULL"
+                ? dailyAmount
+                : workTime === "HALF"
+                ? dailyAmount / 2
+                : 0;
+          }
+          totalAmountTaken += amountTaken;
+        });
+
+        const totalEarning = grossEarning;
+        const remainingAmount = totalEarning - totalAmountTaken;
+
+        document.getElementById("totalPresent").textContent = totalPresent;
+        document.getElementById("totalAbsent").textContent = totalAbsent;
+        document.getElementById("remainingAmount").textContent =
+          remainingAmount >= 0 ? remainingAmount : 0;
+        document.getElementById("totalEarning").textContent = totalEarning;
+        document.getElementById("totalAmountTaken").textContent =
+          totalAmountTaken;
+      }
+
+      // Function to generate PDF and reset
+      function generatePDF() {
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+
+          const controlMonth = document.getElementById("controlMonth");
+          const controlYear = document.getElementById("controlYear");
+          const dailyAmount = document.getElementById("dailyAmount").value;
+
+          // Add company logo and header
+          doc.setFontSize(18);
+          doc.setTextColor(0, 123, 255);
+          doc.text("Elite Workx Fabrication A to Z", 105, 15, {
+            align: "center",
+          });
+
+          // Add report title and daily amount
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          doc.text(
+            `Attendance Report for ${
+              controlMonth.options[controlMonth.selectedIndex].text
+            } ${controlYear.value}`,
+            105,
+            25,
+            { align: "center" }
+          );
+          doc.text(`Daily Amount: ₹${dailyAmount}`, 105, 35, {
+            align: "center",
+          });
+
+          // Prepare table data
+          const headers = ["Date", "Attendance", "Work/Time", "Amount Taken"];
+          const rows = [];
+          let totalPresent = 0,
+            totalAbsent = 0,
+            totalEarning = 0,
+            totalAmountTaken = 0;
+
+          // Collect data from table
+          document.querySelectorAll("#tableBody tr").forEach((row) => {
+            const date = row.cells[0].textContent;
+            const attendance = row.querySelector(".attendance").value;
+            const workTime = row.querySelector(".worktime").value;
+            const amountTaken =
+              parseInt(row.querySelector(".amount-taken").value) || 0;
+
+            rows.push([date, attendance, workTime, `₹${amountTaken}`]);
+
+            if (attendance === "YES") {
+              totalPresent++;
+              totalEarning +=
+                workTime === "FULL"
+                  ? parseInt(dailyAmount)
+                  : workTime === "HALF"
+                  ? parseInt(dailyAmount) / 2
+                  : 0;
+            } else {
+              totalAbsent++;
+            }
+            totalAmountTaken += amountTaken;
+          });
+
+          // Add table to PDF using autoTable
+          doc.autoTable({
+            startY: 45,
+            head: [headers],
+            body: rows,
+            theme: "grid",
+            styles: {
+              fontSize: 9,
+              cellPadding: 2,
+              overflow: "linebreak",
+            },
+            headStyles: {
+              fillColor: [0, 123, 255],
+              textColor: [255, 255, 255],
+              fontSize: 10,
+            },
+            columnStyles: {
+              0: { cellWidth: 30 },
+              1: { cellWidth: 30 },
+              2: { cellWidth: 30 },
+              3: { cellWidth: 30 },
+            },
+            margin: { left: 14, right: 14 },
+          });
+
+          // Add totals section
+          let finalY = doc.lastAutoTable.finalY + 10;
+          doc.setFontSize(11);
+          doc.setTextColor(0, 0, 0);
+
+          const summaryData = [
+            `Total Present: ${totalPresent} days`,
+            `Total Absent: ${totalAbsent} days`,
+            `Total Earnings: ₹${totalEarning}`,
+            `Total Amount Taken: ₹${totalAmountTaken}`,
+            `Remaining Amount: ₹${Math.max(
+              0,
+              totalEarning - totalAmountTaken
+            )}`,
+          ];
+
+          summaryData.forEach((text, index) => {
+            doc.text(text, 14, finalY + index * 8);
+          });
+
+          // Add footer with date
+          const currentDate = new Date();
+          doc.setFontSize(9);
+          doc.setTextColor(100);
+          doc.text(
+            `Generated on: ${formatDate(currentDate)}`,
+            14,
+            doc.internal.pageSize.height - 10
+          );
+
+          // Save the PDF
+          const fileName = `Attendance_${
+            controlMonth.options[controlMonth.selectedIndex].text
+          }_${controlYear.value}_${formatDate(currentDate)}.pdf`;
+          doc.save(fileName);
+
+          // Reset application after successful PDF generation
+          resetApplication();
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("An error occurred while generating the PDF: " + error.message);
+        }
+      }
+
+      // Function to reset the application
+      function resetApplication() {
+        // Clear localStorage and tableData
+        tableData = {};
+        localStorage.removeItem("tableData");
+
+        // Reset daily amount input and enable it
+        const dailyAmountInput = document.getElementById("dailyAmount");
+        dailyAmountInput.value = 500;
+        dailyAmountInput.disabled = false;
+
+        // Reset totals
+        document.getElementById("totalPresent").textContent = "0";
+        document.getElementById("totalAbsent").textContent = "0";
+        document.getElementById("totalEarning").textContent = "0";
+        document.getElementById("totalAmountTaken").textContent = "0";
+        document.getElementById("remainingAmount").textContent = "0";
+
+        // Reset entry tracking
+        hasEntryBeenMade = false;
+
+        // Regenerate table
+        generateTable();
+      }
+
+      // Logout function
+      function logout() {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      }
+
+      // Initialize the page - will be overridden by attendance.js
+      window.onload = function () {
+        const today = new Date();
+        document.getElementById("controlMonth").value = today.getMonth();
+        populateYearDropdown();
+        document.getElementById("controlYear").value = today.getFullYear();
+        populateDateDropdown();
+        updateMonthDisplay();
+        generateTable();
+        const firstDate = formatDate(
+          new Date(today.getFullYear(), today.getMonth(), 1)
+        );
+        updateControlForm(firstDate);
+
+        // Add event listeners for month and year changes
+        document
+          .getElementById("controlMonth")
+          .addEventListener("change", () => {
+            populateDateDropdown();
+            updateMonthDisplay();
+            generateTable();
+            updateControlForm(document.getElementById("controlDate").value);
+          });
+
+        document
+          .getElementById("controlYear")
+          .addEventListener("change", () => {
+            populateDateDropdown();
+            updateMonthDisplay();
+            generateTable();
+            updateControlForm(document.getElementById("controlDate").value);
+          });
+      };
+    </script>
+    <!-- Include our backend integration script -->
+    <script src="/js/attendance.js"></script>
+  </body>
+</html>

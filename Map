@@ -1,0 +1,35 @@
+Attendece-main/
+│── .gitignore
+│── README.md
+│── package-lock.json
+│── package.json
+│
+├── public/
+│   ├── css/
+│   │   ├── auth.css
+│   │   ├── style.css
+│   ├── js/
+│   │   ├── attendance.js
+│   │   ├── common.js
+│
+├── src/
+│   ├── config/
+│   │   ├── db.js
+│   ├── controllers/
+│   │   ├── attendanceController.js
+│   │   ├── userController.js
+│   ├── middleware/
+│   │   ├── auth.js
+│   ├── models/
+│   │   ├── attendance.js
+│   │   ├── user.js
+│   ├── routes/
+│   │   ├── attendance.js
+│   │   ├── user.js
+│   ├── server.js
+│
+├── views/
+│   ├── attendance.html  ✅ (Modified)
+│   ├── dashboard.html
+│   ├── index.html
+│   ├── login.html

@@ -4,16 +4,15 @@ require('dotenv').config();
 
 async function registerUser(req, reply) {
   try {
-    const { storeName, phoneNumber } = req.body;
+    const { storeName, phoneNumber, password } = req.body;
     
-    if (!storeName || !phoneNumber) {
+    if (!storeName || !phoneNumber || !password) {
       return reply.code(400).send({
         success: false,
-        message: 'Store Name and Phone Number are required'
+        message: 'Store Name, Phone Number, and Password are required'
       });
     }
     
-    // Check if user already exists
     const existingUser = await userModel.findUserByPhone(phoneNumber);
     if (existingUser) {
       return reply.code(400).send({
@@ -22,15 +21,14 @@ async function registerUser(req, reply) {
       });
     }
     
-    // Create new user
     const userId = await userModel.createUser({
       storeName,
-      phoneNumber
+      phoneNumber,
+      password
     });
     
-    // Generate token
     const token = jwt.sign(
-      { id: userId, phoneNumber }, 
+      { id: userId, phoneNumber },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -52,27 +50,25 @@ async function registerUser(req, reply) {
 
 async function loginUser(req, reply) {
   try {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, password } = req.body;
     
-    if (!phoneNumber) {
+    if (!phoneNumber || !password) {
       return reply.code(400).send({
         success: false,
-        message: 'Phone Number is required'
+        message: 'Phone Number and Password are required'
       });
     }
     
-    // Find user by phone
     const user = await userModel.findUserByPhone(phoneNumber);
-    if (!user) {
+    if (!user || user.password !== password) {
       return reply.code(400).send({
         success: false,
-        message: 'User with this phone number does not exist'
+        message: 'Invalid phone number or password'
       });
     }
     
-    // Generate token
     const token = jwt.sign(
-      { id: user._id, phoneNumber: user.phoneNumber }, 
+      { id: user._id, phoneNumber: user.phoneNumber },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -125,4 +121,4 @@ module.exports = {
   registerUser,
   loginUser,
   getUserProfile
-}; 
+};

@@ -8,6 +8,7 @@ async function createUser(userData) {
   const result = await db.collection(COLLECTION).insertOne({
     storeName: userData.storeName,
     phoneNumber: userData.phoneNumber,
+    password: userData.password,
     createdAt: new Date()
   });
   return result.insertedId;
@@ -33,4 +34,4 @@ module.exports = {
   findUserByPhone,
   findUserById,
   getAllUsers
-}; 
+};

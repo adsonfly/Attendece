@@ -48,6 +48,11 @@ fastify.get('/attendance', (req, reply) => {
   reply.type('text/html').send(stream);
 });
 
+fastify.get('/history', (req, reply) => {
+  const stream = fs.createReadStream(path.join(__dirname, '../views/history.html'));
+  reply.type('text/html').send(stream);
+});
+
 // Error handler
 fastify.setErrorHandler((error, request, reply) => {
   fastify.log.error(error);

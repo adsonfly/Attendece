@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance History | Elite Workx</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .history-container { padding: 20px; }
+    .month-selector { margin-bottom: 20px; }
+    .history-item { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center;
+      padding: 10px; 
+      margin-bottom: 10px; 
+      background-color: #fff; 
+      border-radius: 5px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+    }
+    .history-item .info { flex: 1; }
+    .history-item .actions { 
+      display: flex; 
+      gap: 10px; 
+      align-items: center; 
+    }
+    .btn-attendance { 
+      background-color: #28a745; 
+      color: white; 
+      padding: 5px 10px; 
+      border: none; 
+      border-radius: 3px; 
+      cursor: pointer; 
+    }
+    .btn-attendance:hover { background-color: #218838; }
+    .btn-delete { background-color: #dc3545; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; }
+    .btn-delete:hover { background-color: #c82333; }
+  </style>
+</head>
+<body>
+  <div class="history-container">
+    <h1>Attendance History</h1>
+    <div class="month-selector">
+      <label for="monthSelect">Select Month: </label>
+      <input type="month" id="monthSelect" name="monthSelect">
+      <button id="loadHistory" class="btn btn-primary">Load</button>
+      <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+    <div id="historyList"></div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+      <div class="modal-content">
+        <span class="close">×</span>
+        <h2>Confirm Deletion</h2>
+        <p id="deleteMessage"></p>
+        <div class="form-group">
+          <button id="confirmDelete" class="btn btn-danger">Yes</button>
+          <button id="cancelDelete" class="btn btn-secondary">No</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function checkAuth() {
+      const token = localStorage.getItem('token');
+      if (!token) window.location.href = '/';
+    }
+    
+    function getToken() {
+      return localStorage.getItem('token');
+    }
+    
+    function formatDate(dateString) {
+      return new Date(dateString).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    
+    async function loadHistory(month) {
+      try {
+        console.log('Loading history for month:', month); // Debug log
+        const response = await fetch(`/api/attendance/history?month=${month}`, {
+          headers: { 'Authorization': `Bearer ${getToken()}` }
+        });
+        
+        console.log('Response status:', response.status); // Debug log
+        const data = await response.json();
+        console.log('Response data:', data); // Debug log
+        
+        if (!response.ok) throw new Error(data.message || 'Failed to load history');
+        displayHistory(data.data.records || []); // Ensure we handle empty data gracefully
+      } catch (error) {
+        console.error('Error loading history:', error);
+        alert(error.message || 'Failed to load history');
+      }
+    }
+    
+    function displayHistory(records) {
+      const list = document.getElementById('historyList');
+      list.innerHTML = records.length ? '' : '<p>No records found for this month.</p>';
+      
+      // Group records by employee
+      const employeeGroups = {};
+      records.forEach(record => {
+        if (!employeeGroups[record.employeeId]) {
+          employeeGroups[record.employeeId] = {
+            employeeId: record.employeeId,
+            employeeName: record.employeeName,
+            salaryPerDay: record.salaryPerDay,
+            totalPresent: record.totalPresent || 0,
+            totalHalfDay: record.totalHalfDay || 0,
+            totalAbsent: record.totalAbsent || 0,
+            totalEarnings: record.totalEarnings || 0,
+            records: []
+          };
+        }
+        employeeGroups[record.employeeId].records.push(record);
+      });
+
+      // Display records grouped by employee
+      Object.values(employeeGroups).forEach(group => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.innerHTML = `
+          <div class="info">
+            <strong>${group.employeeName}</strong><br>
+            Present: ${group.totalPresent} | Half-day: ${group.totalHalfDay} | Absent: ${group.totalAbsent}<br>
+            Total Earnings: ₹${group.totalEarnings.toFixed(2)}<br>
+            <small>Records: ${group.records.map(r => 
+              `${formatDate(r.date)} - ${r.status}`
+            ).join(', ')}</small>
+          </div>
+          <div class="actions">
+            <button class="btn-attendance" onclick="window.location.href='/attendance?employeeId=${group.employeeId}&employeeName=${encodeURIComponent(group.employeeName)}&salaryPerDay=${group.salaryPerDay}'">
+              Attendance
+            </button>
+            <button class="btn-delete" data-id="${group.employeeId}" data-name="${group.employeeName}">
+              Delete All
+            </button>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      
+      document.querySelectorAll('.btn-delete').forEach(button => {
+        button.addEventListener('click', () => {
+          const id = button.getAttribute('data-id');
+          const name = button.getAttribute('data-name');
+          const modal = document.getElementById('deleteModal');
+          document.getElementById('deleteMessage').textContent = `Are you sure you want to delete all records for ${name}?`;
+          modal.style.display = 'block';
+          
+          document.getElementById('confirmDelete').onclick = async () => {
+            try {
+              const response = await fetch(`/api/attendance/employee/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${getToken()}` }
+              });
+              
+              const data = await response.json();
+              if (!response.ok) throw new Error(data.message || 'Delete failed');
+              
+              modal.style.display = 'none';
+              const month = document.getElementById('monthSelect').value;
+              if (month) loadHistory(month);
+              alert(`Successfully deleted ${data.data.deletedCount} records for ${name}`);
+            } catch (error) {
+              console.error('Delete error:', error);
+              alert(error.message || 'Failed to delete records');
+            }
+          };
+        });
+      });
+    }
+    
+    function calculateSalaryEarned(status, salaryPerDay) {
+      if (status === 'present') return salaryPerDay;
+      if (status === 'half-day') return salaryPerDay / 2;
+      return 0; // absent
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      const modal = document.getElementById('deleteModal');
+      document.querySelector('.modal .close').onclick = () => modal.style.display = 'none';
+      window.onclick = (event) => { if (event.target == modal) modal.style.display = 'none'; };
+      
+      document.getElementById('loadHistory').addEventListener('click', () => {
+        const month = document.getElementById('monthSelect').value; // e.g., "2025-03"
+        if (month) loadHistory(month);
+        else alert('Please select a month');
+      });
+    });
+  </script>
+</body>
+</html>

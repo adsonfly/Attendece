@@ -11,10 +11,20 @@ function getToken() {
 // Parse URL parameters
 function getURLParams() {
   const params = new URLSearchParams(window.location.search);
+  const employeeId = params.get('employeeId');
+  const employeeName = params.get('employeeName');
+  const salaryPerDay = params.get('salaryPerDay');
+
+  if (!employeeId || !employeeName) {
+    alert('Missing required employee information. Redirecting to dashboard.');
+    window.location.href = '/dashboard';
+    return {};
+  }
+
   return {
-    employeeId: params.get('employeeId'),
-    employeeName: params.get('employeeName'),
-    salaryPerDay: params.get('salaryPerDay') || 500
+    employeeId,
+    employeeName: decodeURIComponent(employeeName),
+    salaryPerDay: parseFloat(salaryPerDay) || 500
   };
 }
 
@@ -24,24 +34,27 @@ async function initPage() {
     // Get employee details from URL
     const { employeeId, employeeName, salaryPerDay } = getURLParams();
     
-    if (!employeeId) {
-      alert('Employee ID is missing. Redirecting to dashboard.');
-      window.location.href = '/dashboard';
-      return;
+    if (!employeeId || !employeeName) {
+      return; // getURLParams will handle the redirect
     }
     
     employeeData = {
-      employeeId: employeeId,
-      employeeName: employeeName,
-      salaryPerDay: parseFloat(salaryPerDay)
+      employeeId,
+      employeeName,
+      salaryPerDay
     };
     
     // Update header with employee name
-    document.querySelector('.header-logo').textContent = `Attendance for ${employeeName}`;
+    const headerLogo = document.querySelector('.header-logo');
+    if (headerLogo) {
+      headerLogo.textContent = `Attendance for ${employeeName}`;
+    }
     
     // Set daily amount
     const dailyAmountInput = document.getElementById('dailyAmount');
-    dailyAmountInput.value = salaryPerDay;
+    if (dailyAmountInput) {
+      dailyAmountInput.value = salaryPerDay;
+    }
     
     // Get current user info
     await getCurrentUser();
@@ -49,13 +62,15 @@ async function initPage() {
     // Load attendance history
     await loadAttendanceRecords();
     
-    // Update month display
+    // Initialize date controls
+    populateYearDropdown();
     updateMonthDisplay();
     populateDateDropdown();
-    
+    generateTable();
   } catch (error) {
     console.error('Error initializing page:', error);
     alert('Failed to initialize page. Please try again.');
+    window.location.href = '/dashboard';
   }
 }
 

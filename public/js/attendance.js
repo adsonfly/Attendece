@@ -1,480 +1,421 @@
-// Attendance API interactions
 let employeeData = {};
 let attendanceRecords = [];
 let currentUser = null;
+let tableData = {}; // Single global declaration
+let currentMonth = new Date().getMonth() + 1;
+let currentYear = new Date().getFullYear();
 
-// Get token from localStorage
 function getToken() {
-  return localStorage.getItem('token');
+  const token = localStorage.getItem('token');
+  console.log("Retrieved token:", token ? "Token exists" : "No token found");
+  return token;
 }
 
-// Parse URL parameters
 function getURLParams() {
+  console.log("Getting URL params");
   const params = new URLSearchParams(window.location.search);
   const employeeId = params.get('employeeId');
   const employeeName = params.get('employeeName');
   const salaryPerDay = params.get('salaryPerDay');
+  const month = parseInt(params.get('month')) || currentMonth;
+  const year = parseInt(params.get('year')) || currentYear;
 
   if (!employeeId || !employeeName) {
-    alert('Missing required employee information. Redirecting to dashboard.');
-    window.location.href = '/dashboard';
-    return {};
+    console.error("Missing employeeId or employeeName in URL parameters");
+    return { employeeId: null, employeeName: null, salaryPerDay: 500, month, year };
   }
 
   return {
     employeeId,
     employeeName: decodeURIComponent(employeeName),
-    salaryPerDay: parseFloat(salaryPerDay) || 500
+    salaryPerDay: parseFloat(salaryPerDay) || 500,
+    month,
+    year
   };
 }
 
-// Initialize the page
-async function initPage() {
+function getMonthName(month) {
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return monthNames[month - 1];
+}
+
+window.initPage = async function() {
+  console.log("Initializing page");
   try {
-    // Get employee details from URL
-    const { employeeId, employeeName, salaryPerDay } = getURLParams();
+    employeeData = {};
+    attendanceRecords = [];
+    tableData = {};
+
+    const { employeeId, employeeName, salaryPerDay, month, year } = getURLParams();
+    currentMonth = month;
+    currentYear = year;
     
     if (!employeeId || !employeeName) {
-      return; // getURLParams will handle the redirect
+      console.warn("Invalid URL parameters, using defaults");
+      employeeData = { employeeId: "Unknown", employeeName: "Unknown", salaryPerDay: 500 };
+      const headerLogoFallback = document.querySelector('.header-logo');
+      if (headerLogoFallback) {
+        headerLogoFallback.textContent = "Attendance for Unknown Employee";
+      }
+      const dailyAmountFallback = document.getElementById('dailyAmount');
+      if (dailyAmountFallback) {
+        dailyAmountFallback.value = 500;
+      } else {
+        console.error("Daily amount input not found during fallback");
+      }
+      window.generateTable();
+      return;
     }
     
-    employeeData = {
-      employeeId,
-      employeeName,
-      salaryPerDay
-    };
+    employeeData = { employeeId, employeeName, salaryPerDay };
+    console.log("Employee data:", employeeData);
     
-    // Update header with employee name
     const headerLogo = document.querySelector('.header-logo');
     if (headerLogo) {
-      headerLogo.textContent = `Attendance for ${employeeName}`;
+      headerLogo.textContent = `Attendance for ${employeeName} - ${getMonthName(currentMonth)} ${currentYear}`;
+    } else {
+      console.error("Header logo element not found");
     }
     
-    // Set daily amount
     const dailyAmountInput = document.getElementById('dailyAmount');
     if (dailyAmountInput) {
       dailyAmountInput.value = salaryPerDay;
+    } else {
+      console.error("Daily amount input not found");
+      throw new Error("Daily amount input element missing from DOM");
     }
     
-    // Get current user info
     await getCurrentUser();
-    
-    // Load attendance history
-    await loadAttendanceRecords();
-    
-    // Initialize date controls
-    populateYearDropdown();
-    updateMonthDisplay();
-    populateDateDropdown();
-    generateTable();
+    await loadTableData();
+    console.log("Calling generateTable after loading data");
+    window.generateTable();
+    window.updateControlForm(formatDate(new Date()));
   } catch (error) {
-    console.error('Error initializing page:', error);
-    alert('Failed to initialize page. Please try again.');
-    window.location.href = '/dashboard';
+    console.error('Error initializing page:', error.message);
+    alert(`Initialization failed: ${error.message}. Displaying available data if any.`);
+    window.generateTable();
   }
-}
+};
 
-// Get current user info
 async function getCurrentUser() {
+  console.log("Fetching current user");
   try {
+    const token = getToken();
+    if (!token) {
+      console.warn("No authentication token found, proceeding without user data");
+      currentUser = null;
+      return;
+    }
     const response = await fetch('/api/users/me', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${getToken()}`
+        'Authorization': `Bearer ${token}`
       }
     });
-    
+
     if (!response.ok) {
-      throw new Error('Failed to get user information');
+      throw new Error(`Failed to fetch user: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    currentUser = data.user;
-    
-    // Update phone number in header
-    if (currentUser && currentUser.phone) {
-      document.querySelector('.header-contact span:last-child').textContent = currentUser.phone;
+    if (data.success) {
+      currentUser = data.data;
+      console.log("Current user:", currentUser);
+    } else {
+      throw new Error(data.message || 'Failed to get user data');
     }
-    
   } catch (error) {
-    console.error('Error fetching current user:', error);
+    console.error('Error getting current user:', error.message);
+    currentUser = null;
   }
 }
 
-// Load attendance records for the employee
-async function loadAttendanceRecords() {
+async function loadTableData() {
+  console.log("Loading table data for employee:", employeeData.employeeId);
   try {
-    const response = await fetch(`/api/attendance/employee/${employeeData.employeeId}`, {
+    const token = getToken();
+    if (!token || !employeeData.employeeId) {
+      console.warn("No token or employeeId, skipping table data fetch");
+      tableData = {};
+      return;
+    }
+
+    const url = `/api/attendance/table-data/${employeeData.employeeId}?month=${currentMonth}&year=${currentYear}`;
+    console.log("Fetching from URL:", url);
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${getToken()}`
+        'Authorization': `Bearer ${token}`
       }
     });
-    
+
     if (!response.ok) {
-      throw new Error('Failed to load attendance records');
+      throw new Error(`Failed to load table data: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
-    if (data.success && Array.isArray(data.attendance)) {
-      attendanceRecords = data.attendance;
-      
-      // Format dates and populate in tableData
-      for (const record of attendanceRecords) {
-        const date = new Date(record.date);
-        const dateStr = formatDate(date);
-        
-        // Convert API data to table format
-        let workTime = "0";
-        if (record.status === "present") {
-          workTime = "FULL";
-        } else if (record.status === "half-day") {
-          workTime = "HALF";
-        }
-        
-        tableData[dateStr] = {
-          attendance: record.status === "absent" ? "NO" : "YES",
-          workTime: workTime,
-          amountTaken: record.amountTaken || 0
-        };
-      }
-      
-      // Generate table with loaded data
-      generateTable();
-      
-      // Update totals
-      updateTotals();
+    if (data.success) {
+      tableData = data.data;
+      console.log("Loaded table data:", tableData);
+    } else {
+      throw new Error(data.message || 'Failed to get table data');
     }
-    
   } catch (error) {
-    console.error('Error loading attendance records:', error);
+    console.error('Error loading table data:', error);
+    tableData = {};
   }
 }
 
-// Save attendance record to the backend
-async function saveAttendance(dateStr, attendanceStatus, workTimeValue, amountTaken) {
+async function saveTableData() {
+  console.log("Saving table data for employee:", employeeData.employeeId);
   try {
-    // Convert from UI format to API format
-    let apiStatus = "present";
-    if (attendanceStatus === "NO") {
-      apiStatus = "absent";
-    } else if (workTimeValue === "HALF") {
-      apiStatus = "half-day";
+    const token = getToken();
+    if (!token || !employeeData.employeeId) {
+      throw new Error("No token or employeeId available");
     }
-    
-    const dateObj = parseDateString(dateStr);
-    
-    const response = await fetch('/api/attendance/add', {
+
+    const url = '/api/attendance/table-data';
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         employeeId: employeeData.employeeId,
-        employeeName: employeeData.employeeName,
-        salaryPerDay: employeeData.salaryPerDay,
-        status: apiStatus,
-        date: dateObj.toISOString(),
-        amountTaken: parseInt(amountTaken) || 0
+        tableData,
+        month: currentMonth,
+        year: currentYear
       })
     });
-    
+
     if (!response.ok) {
-      throw new Error('Failed to save attendance');
+      throw new Error(`Failed to save table data: ${response.status}`);
     }
-    
+
     const data = await response.json();
-    
-    if (data.success) {
-      console.log('Attendance saved successfully');
-      // Return success to update UI
-      return true;
-    } else {
-      throw new Error(data.message || 'Failed to save attendance');
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to save table data');
     }
-    
+
+    console.log("Table data saved successfully");
   } catch (error) {
-    console.error('Error saving attendance:', error);
-    alert(`Failed to save attendance: ${error.message}`);
-    return false;
+    console.error('Error saving table data:', error);
+    alert(`Failed to save table data: ${error.message}`);
   }
 }
 
-// Parse date string (DD-MM-YY) to Date object
-function parseDateString(dateStr) {
-  const [day, month, year] = dateStr.split('-');
-  // Note: month is 0-indexed in JavaScript Date
-  return new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
-}
-
-// Override update row function from the HTML to save to backend
 async function updateRow(dateStr, element) {
-  const row = element.closest('tr');
-  if (!row) return;
+  console.log(`Updating row for ${dateStr}:`, element);
+  try {
+    const attendanceSelect = element.querySelector('select[name="attendance"]');
+    const workTimeSelect = element.querySelector('select[name="workTime"]');
+    const amountInput = element.querySelector('input[name="amount"]');
 
-  const attendance = row.querySelector(".attendance").value;
-  const workTime = row.querySelector(".worktime").value;
-  const amountTaken = parseInt(row.querySelector(".amount-taken").value) || 0;
+    if (!attendanceSelect || !workTimeSelect || !amountInput) {
+      throw new Error("Required form elements not found");
+    }
 
-  // Check if this is a meaningful update (not just loading default values)
+    const attendanceStatus = attendanceSelect.value;
+    const workTimeValue = workTimeSelect.value;
+    const amountTaken = parseFloat(amountInput.value) || 0;
+
+    // Update local table data
+    tableData[dateStr] = {
+      attendance: attendanceStatus,
+      workTime: workTimeValue,
+      amountTaken
+    };
+
+    // Save to MongoDB
+    await saveTableData();
+
+    // Update UI
+    window.updateTotals();
+    window.applyStyles(element);
+  } catch (error) {
+    console.error(`Error updating row for ${dateStr}:`, error);
+    alert(`Failed to update attendance: ${error.message}`);
+  }
+}
+
+async function updateSelectedRow() {
+  const dateStr = document.getElementById("controlDate").value;
+  const attendanceStatus = document.getElementById("controlAttendance").value;
+  const workTimeValue = document.getElementById("controlWorkTime").value;
+  const amountTaken = parseFloat(document.getElementById("controlAmount").value) || 0;
+
+  try {
+    // Update local table data
+    tableData[dateStr] = {
+      attendance: attendanceStatus,
+      workTime: workTimeValue,
+      amountTaken
+    };
+
+    // Save to MongoDB
+    await saveTableData();
+
+    // Update UI
+    window.generateTable();
+    window.updateTotals();
+  } catch (error) {
+    console.error('Error updating selected row:', error);
+    alert(`Failed to update attendance: ${error.message}`);
+  }
+}
+
+function formatDate(date) {
+  const d = new Date(date);
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear().toString().slice(-2);
+  return `${day}-${month}-${year}`;
+}
+
+function parseDateString(dateStr) {
+  const [day, month, year] = dateStr.split('-').map(n => parseInt(n));
+  return new Date(2000 + year, month - 1, day);
+}
+
+window.updateControlForm = function(dateStr) {
+  console.log("Updating control form for date:", dateStr);
+  const attendanceSelect = document.getElementById("controlAttendance");
+  const workTimeSelect = document.getElementById("controlWorkTime");
+  const amountInput = document.getElementById("controlAmount");
+
+  if (!attendanceSelect || !workTimeSelect || !amountInput) {
+    console.error("Required form elements not found");
+    return;
+  }
+
   const rowData = tableData[dateStr] || { attendance: "NO", workTime: "0", amountTaken: 0 };
-  if (
-    rowData.attendance !== attendance ||
-    rowData.workTime !== workTime ||
-    rowData.amountTaken !== amountTaken
-  ) {
-    hasEntryBeenMade = true;
-    document.getElementById("dailyAmount").disabled = true;
-    
-    // Save to backend
-    const saved = await saveAttendance(dateStr, attendance, workTime, amountTaken);
-    
-    if (saved) {
-      // Update local data
-      tableData[dateStr] = { attendance, workTime, amountTaken };
-      localStorage.setItem("tableData", JSON.stringify(tableData));
-      
-      // Update UI
-      updateWorkTimeDropdown(row);
-      applyStyles(row);
-      updateTotals();
-      updateControlForm(dateStr);
-    }
-  } else {
-    // No meaningful change, just update UI
-    updateWorkTimeDropdown(row);
-    applyStyles(row);
+
+  attendanceSelect.value = rowData.attendance;
+  workTimeSelect.value = rowData.workTime;
+  amountInput.value = rowData.amountTaken;
+};
+
+window.generateTable = function() {
+  console.log("Generating table");
+  const tableBody = document.getElementById("tableBody");
+  if (!tableBody) {
+    console.error("Table body element not found");
+    return;
   }
-}
 
-// Add these functions to enhance mobile experience
-function checkMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-}
+  tableBody.innerHTML = "";
 
-// Initialize mobile-specific features
-function initMobileFeatures() {
-  if (!checkMobileDevice()) return;
-  
-  // Add mobile class to body for additional CSS targeting
-  document.body.classList.add('mobile-device');
-  
-  // Make table cells more compact on mobile
-  const style = document.createElement('style');
-  style.textContent = `
-    @media (max-width: 768px) {
-      table td, table th {
-        padding: 8px 6px;
-        font-size: 14px;
-      }
-      
-      .amount-taken {
-        width: 70px !important;
-      }
-      
-      select.attendance, select.worktime {
-        padding: 8px 2px !important;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-  
-  // Add tap feedback to buttons
-  document.querySelectorAll('.btn, .nav-button').forEach(button => {
-    button.addEventListener('touchstart', function() {
-      this.style.opacity = '0.7';
-    });
-    
-    button.addEventListener('touchend', function() {
-      this.style.opacity = '1';
-    });
+  const dates = Object.keys(tableData).sort((a, b) => parseDateString(a) - parseDateString(b));
+
+  dates.forEach((dateStr) => {
+    const rowData = tableData[dateStr];
+    const row = document.createElement("tr");
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = dateStr;
+    row.appendChild(dateCell);
+
+    const attendanceCell = document.createElement("td");
+    const attendanceSelect = document.createElement("select");
+    attendanceSelect.name = "attendance";
+    attendanceSelect.value = rowData.attendance;
+    attendanceSelect.innerHTML = `
+      <option value="YES">YES</option>
+      <option value="NO">NO</option>
+    `;
+    attendanceCell.appendChild(attendanceSelect);
+    row.appendChild(attendanceCell);
+
+    const workTimeCell = document.createElement("td");
+    const workTimeSelect = document.createElement("select");
+    workTimeSelect.name = "workTime";
+    workTimeSelect.value = rowData.workTime;
+    workTimeSelect.innerHTML = `
+      <option value="FULL">FULL</option>
+      <option value="HALF">HALF</option>
+      <option value="0">0</option>
+    `;
+    workTimeCell.appendChild(workTimeSelect);
+    row.appendChild(workTimeCell);
+
+    const amountCell = document.createElement("td");
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.name = "amount";
+    amountInput.value = rowData.amountTaken;
+    amountCell.appendChild(amountInput);
+    row.appendChild(amountCell);
+
+    tableBody.appendChild(row);
   });
-}
+};
 
-// Call this after the DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-  initPage();
-  initMobileFeatures();
-  
-  // Add quick refresh button for mobile
-  if (checkMobileDevice()) {
-    const refreshButton = document.createElement('button');
-    refreshButton.className = 'footer-button refresh-button';
-    refreshButton.style.marginRight = '10px';
-    refreshButton.innerHTML = '↻ Refresh';
-    refreshButton.addEventListener('click', function() {
-      loadAttendanceRecords();
-      
-      // Show loading indicator
-      this.innerHTML = '⟳ Loading...';
-      setTimeout(() => {
-        this.innerHTML = '↻ Refresh';
-      }, 1000);
-    });
-    
-    const footerDiv = document.querySelector('.footer');
-    footerDiv.prepend(refreshButton);
+window.updateTotals = function() {
+  console.log("Updating totals");
+  const totalPresent = document.getElementById("totalPresent");
+  const totalAbsent = document.getElementById("totalAbsent");
+  const totalEarning = document.getElementById("totalEarning");
+  const totalAmountTaken = document.getElementById("totalAmountTaken");
+
+  if (!totalPresent || !totalAbsent || !totalEarning || !totalAmountTaken) {
+    console.error("Total elements not found");
+    return;
   }
-  
-  // Override the generatePDF function with mobile optimizations
-  window.generatePDF = async function() {
-    try {
-      // On mobile, show a loading indicator
-      if (checkMobileDevice()) {
-        const pdfButton = document.querySelector('.footer-button:not(.refresh-button)');
-        pdfButton.innerHTML = 'Generating PDF...';
-        pdfButton.disabled = true;
-      }
-      
-      // Get latest data from backend before generating PDF
-      await loadAttendanceRecords();
-      
-      // Original PDF generation code follows
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
 
-      const controlMonth = document.getElementById("controlMonth");
-      const controlYear = document.getElementById("controlYear");
-      const dailyAmount = document.getElementById("dailyAmount").value;
+  let presentCount = 0;
+  let absentCount = 0;
+  let earning = 0;
+  let amountTaken = 0;
 
-      // Add company logo and header
-      doc.setFontSize(18);
-      doc.setTextColor(0, 123, 255);
-      doc.text("Elite Workx Fabrication A to Z", 105, 15, {
-        align: "center",
-      });
-
-      // Add report title and daily amount
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text(
-        `Attendance Report for ${
-          controlMonth.options[controlMonth.selectedIndex].text
-        } ${controlYear.value}`,
-        105,
-        25,
-        { align: "center" }
-      );
-      doc.text(`Daily Amount: ₹${dailyAmount}`, 105, 35, {
-        align: "center",
-      });
-
-      // Add employee name
-      doc.text(`Employee: ${employeeData.employeeName}`, 105, 40, {
-        align: "center",
-      });
-
-      // Prepare table data
-      const headers = ["Date", "Attendance", "Work/Time", "Amount Taken"];
-      const rows = [];
-      let totalPresent = 0,
-        totalAbsent = 0,
-        totalEarning = 0,
-        totalAmountTaken = 0;
-
-      // Collect data from table
-      document.querySelectorAll("#tableBody tr").forEach((row) => {
-        const date = row.cells[0].textContent;
-        const attendance = row.querySelector(".attendance").value;
-        const workTime = row.querySelector(".worktime").value;
-        const amountTaken =
-          parseInt(row.querySelector(".amount-taken").value) || 0;
-
-        rows.push([date, attendance, workTime, `₹${amountTaken}`]);
-
-        if (attendance === "YES") {
-          totalPresent++;
-          totalEarning +=
-            workTime === "FULL"
-              ? parseInt(dailyAmount)
-              : workTime === "HALF"
-              ? parseInt(dailyAmount) / 2
-              : 0;
-        } else {
-          totalAbsent++;
-        }
-        totalAmountTaken += amountTaken;
-      });
-
-      // Add table to PDF using autoTable
-      doc.autoTable({
-        startY: 45,
-        head: [headers],
-        body: rows,
-        theme: "grid",
-        styles: {
-          fontSize: 9,
-          cellPadding: 2,
-          overflow: "linebreak",
-        },
-        headStyles: {
-          fillColor: [0, 123, 255],
-          textColor: [255, 255, 255],
-          fontSize: 10,
-        },
-        columnStyles: {
-          0: { cellWidth: 30 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 30 },
-          3: { cellWidth: 30 },
-        },
-        margin: { left: 14, right: 14 },
-      });
-
-      // Add totals section
-      let finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(11);
-      doc.setTextColor(0, 0, 0);
-
-      const summaryData = [
-        `Total Present: ${totalPresent} days`,
-        `Total Absent: ${totalAbsent} days`,
-        `Total Earnings: ₹${totalEarning}`,
-        `Total Amount Taken: ₹${totalAmountTaken}`,
-        `Remaining Amount: ₹${Math.max(
-          0,
-          totalEarning - totalAmountTaken
-        )}`,
-      ];
-
-      summaryData.forEach((text, index) => {
-        doc.text(text, 14, finalY + index * 8);
-      });
-
-      // Add footer with date
-      const currentDate = new Date();
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text(
-        `Generated on: ${formatDate(currentDate)}`,
-        14,
-        doc.internal.pageSize.height - 10
-      );
-
-      // Save the PDF
-      const fileName = `Attendance_${employeeData.employeeName}_${
-        controlMonth.options[controlMonth.selectedIndex].text
-      }_${controlYear.value}.pdf`;
-      doc.save(fileName);
-      
-      // Reset button on mobile
-      if (checkMobileDevice()) {
-        const pdfButton = document.querySelector('.footer-button:not(.refresh-button)');
-        pdfButton.innerHTML = 'Generate PDF';
-        pdfButton.disabled = false;
-      }
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("An error occurred while generating the PDF: " + error.message);
-      
-      // Reset button on mobile
-      if (checkMobileDevice()) {
-        const pdfButton = document.querySelector('.footer-button:not(.refresh-button)');
-        pdfButton.innerHTML = 'Generate PDF';
-        pdfButton.disabled = false;
-      }
+  Object.values(tableData).forEach((rowData) => {
+    if (rowData.attendance === "YES") {
+      presentCount++;
+      earning += rowData.workTime === "FULL" ? parseInt(employeeData.salaryPerDay) : rowData.workTime === "HALF" ? parseInt(employeeData.salaryPerDay) / 2 : 0;
+    } else {
+      absentCount++;
     }
-  };
-}); 
+    amountTaken += rowData.amountTaken;
+  });
+
+  totalPresent.textContent = presentCount.toString();
+  totalAbsent.textContent = absentCount.toString();
+  totalEarning.textContent = earning.toString();
+  totalAmountTaken.textContent = amountTaken.toString();
+};
+
+window.applyStyles = function(element) {
+  console.log("Applying styles to element:", element);
+  const attendanceSelect = element.querySelector('select[name="attendance"]');
+  const workTimeSelect = element.querySelector('select[name="workTime"]');
+  const amountInput = element.querySelector('input[name="amount"]');
+
+  if (!attendanceSelect || !workTimeSelect || !amountInput) {
+    console.error("Required form elements not found");
+    return;
+  }
+
+  const attendanceStatus = attendanceSelect.value;
+  const workTimeValue = workTimeSelect.value;
+  const amountTaken = parseFloat(amountInput.value) || 0;
+
+  if (attendanceStatus === "YES") {
+    element.style.backgroundColor = "lightgreen";
+  } else {
+    element.style.backgroundColor = "lightcoral";
+  }
+
+  if (workTimeValue === "FULL") {
+    element.style.color = "black";
+  } else if (workTimeValue === "HALF") {
+    element.style.color = "blue";
+  } else {
+    element.style.color = "red";
+  }
+
+  if (amountTaken > 0) {
+    element.style.fontWeight = "bold";
+  } else {
+    element.style.fontWeight = "normal";
+  }
+};

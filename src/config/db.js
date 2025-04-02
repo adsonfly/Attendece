@@ -1,19 +1,23 @@
 const { MongoClient } = require('mongodb');
-require('dotenv').config();
+const config = require('./config');
 
-const mongoURI = process.env.MONGODB_URI;
+const mongoURI = config.mongoUri;
+const dbName = config.dbName;
 let db = null;
+let client = null;
 
 async function connectToDatabase() {
   try {
-    const client = new MongoClient(mongoURI);
+    if (db) return db;
+
+    client = new MongoClient(mongoURI);
     await client.connect();
     console.log('Connected to MongoDB successfully');
-    db = client.db();
+    db = client.db(dbName);
     return db;
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
-    process.exit(1);
+    throw error;
   }
 }
 
@@ -24,4 +28,19 @@ function getDb() {
   return db;
 }
 
-module.exports = { connectToDatabase, getDb }; 
+async function closeConnection() {
+  if (client) {
+    await client.close();
+    db = null;
+    client = null;
+    console.log('MongoDB connection closed');
+  }
+}
+
+module.exports = {
+  connectToDatabase,
+  getDb,
+  closeConnection,
+  mongoURI,
+  dbName
+};

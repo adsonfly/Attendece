@@ -45,7 +45,7 @@
       <section class="employees-section">
         <h2>Your Employees</h2>
         <div id="loadingMessage" class="loading-message">Loading employees...</div>
-        <div id="employeesContainer" class="employees-container"></div>
+        <div id="employeeList" class="employees-container"></div>
       </section>
     </main>
     
@@ -142,63 +142,48 @@
     }
     
     function displayEmployees(employees) {
-      const container = document.getElementById('employeesContainer');
-      console.log('Displaying employees:', employees); // Debug log
+      const list = document.getElementById('employeeList');
+      list.innerHTML = employees.length ? '' : '<p>No employees found.</p>';
       
-      if (!employees || employees.length === 0) {
-        container.innerHTML = '<p class="no-employees">No employees found. Add your first employee to get started!</p>';
-        return;
-      }
-
-      container.innerHTML = employees.map(employee => {
-        console.log('Processing employee:', employee); // Debug log
-        
-        const statusClass = {
-          'present': 'status-present',
-          'absent': 'status-absent',
-          'half-day': 'status-half-day'
-        }[employee.status] || 'status-present';
-
-        const formattedDate = employee.date ? formatDate(employee.date) : 'No attendance yet';
-
-        return `
-          <div class="employee-item" data-employee-id="${employee.employeeId}">
-            <div class="employee-details">
-              <div class="employee-name">${employee.employeeName}</div>
-              <div class="employee-salary">₹${employee.salaryPerDay}/day</div>
-              <div class="employee-last-attendance">
-                Last update: ${formattedDate}
-                <span class="attendance-status ${statusClass}">${employee.status || 'present'}</span>
-              </div>
-              <div class="employee-stats">
-                <div class="stat-item">
-                  Present: <span class="stat-value">${employee.totalPresent || 0}</span>
-                </div>
-                <div class="stat-item">
-                  Half-day: <span class="stat-value">${employee.totalHalfDay || 0}</span>
-                </div>
-                <div class="stat-item">
-                  Absent: <span class="stat-value">${employee.totalAbsent || 0}</span>
-                </div>
-                <div class="stat-item">
-                  Total: <span class="stat-value">₹${(employee.totalEarnings || 0).toFixed(2)}</span>
-                </div>
-              </div>
+      employees.forEach(employee => {
+        const item = document.createElement('div');
+        item.className = 'employee-item';
+        item.innerHTML = `
+          <div class="employee-info">
+            <div class="employee-header">
+              <h3>${employee.employeeName}</h3>
+              <span class="employee-id">ID: ${employee.employeeId}</span>
+              <span class="salary">₹${employee.salaryPerDay}/day</span>
             </div>
-            <div class="employee-actions">
-              <button class="btn-action btn-attendance" onclick="window.location.href='/attendance?employeeId=${employee.employeeId}&employeeName=${encodeURIComponent(employee.employeeName)}&salaryPerDay=${employee.salaryPerDay}'">
-                Attendance
-              </button>
-              <button class="btn-action btn-shift" onclick="handleShiftClick('${employee.employeeId}', '${employee.employeeName}')">
-                Shift to Month
-              </button>
-              <button class="btn-action btn-delete" onclick="handleDeleteClick('${employee.employeeId}', '${employee.employeeName}')">
-                Delete
-              </button>
+            <div class="employee-stats">
+              <div class="stat-item">
+                Present: <span class="stat-value">${employee.totalPresent || 0}</span>
+              </div>
+              <div class="stat-item">
+                Half-day: <span class="stat-value">${employee.totalHalfDay || 0}</span>
+              </div>
+              <div class="stat-item">
+                Absent: <span class="stat-value">${employee.totalAbsent || 0}</span>
+              </div>
+              <div class="stat-item">
+                Total: <span class="stat-value">₹${(employee.totalEarnings || 0).toFixed(2)}</span>
+              </div>
             </div>
           </div>
+          <div class="employee-actions">
+            <button class="btn-action btn-attendance" onclick="window.location.href='/attendance?employeeId=${employee.employeeId}&employeeName=${encodeURIComponent(employee.employeeName)}&salaryPerDay=${employee.salaryPerDay}'">
+              Attendance
+            </button>
+            <button class="btn-action btn-shift" onclick="handleShiftClick('${employee.employeeId}', '${employee.employeeName}')">
+              Shift to Month
+            </button>
+            <button class="btn-action btn-delete" onclick="handleDeleteClick('${employee.employeeId}', '${employee.employeeName}')">
+              Delete
+            </button>
+          </div>
         `;
-      }).join('');
+        list.appendChild(item);
+      });
     }
     
     async function addEmployee(employeeName, salaryPerDay) {

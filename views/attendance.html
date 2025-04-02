@@ -351,18 +351,18 @@
     <div class="controls">
       <label for="controlMonth">Month:</label>
       <select id="controlMonth">
-        <option value="0">January</option>
-        <option value="1">February</option>
-        <option value="2">March</option>
-        <option value="3">April</option>
-        <option value="4">May</option>
-        <option value="5">June</option>
-        <option value="6">July</option>
-        <option value="7">August</option>
-        <option value="8">September</option>
-        <option value="9">October</option>
-        <option value="10">November</option>
-        <option value="11">December</option>
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4">April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
       </select>
 
       <label for="controlYear">Year:</label>
@@ -424,9 +424,97 @@
     </div>
 
     <script>
-      // Store data in memory and persist with localStorage
-      let tableData = JSON.parse(localStorage.getItem("tableData")) || {};
+      // Store data in memory
+      let tableData = {};
       let hasEntryBeenMade = false; // Track if an entry has been made
+      let currentMonth = new Date().getMonth() + 1;
+      let currentYear = new Date().getFullYear();
+
+      // Function to load table data from MongoDB
+      async function loadTableData() {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            console.error('No token found');
+            return;
+          }
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const employeeId = urlParams.get('employeeId');
+          if (!employeeId) {
+            console.error('No employeeId found in URL');
+            return;
+          }
+
+          const response = await fetch(`/api/attendance/table-data/${employeeId}?month=${currentMonth}&year=${currentYear}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to load data: ${response.status}`);
+          }
+
+          const result = await response.json();
+          if (result.success) {
+            tableData = result.data || {};
+            console.log('Loaded table data:', tableData);
+            generateTable();
+            updateTotals();
+          } else {
+            throw new Error(result.message || 'Failed to load data');
+          }
+        } catch (error) {
+          console.error('Error loading table data:', error);
+          alert(`Failed to load attendance data: ${error.message}`);
+        }
+      }
+
+      // Function to save table data to MongoDB
+      async function saveTableData() {
+        try {
+          const token = localStorage.getItem('token');
+          if (!token) {
+            throw new Error('No token found');
+          }
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const employeeId = urlParams.get('employeeId');
+          if (!employeeId) {
+            throw new Error('No employeeId found in URL');
+          }
+
+          const response = await fetch('/api/attendance/table-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              employeeId,
+              tableData,
+              month: currentMonth,
+              year: currentYear
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to save data: ${response.status}`);
+          }
+
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.message || 'Failed to save data');
+          }
+
+          console.log('Table data saved successfully');
+        } catch (error) {
+          console.error('Error saving table data:', error);
+          alert(`Failed to save attendance data: ${error.message}`);
+        }
+      }
 
       // Function to format date as DD-MM-YY
       function formatDate(date) {
@@ -462,11 +550,11 @@
 
         const daysInMonth = new Date(
           controlYear,
-          controlMonth + 1,
+          controlMonth,
           0
         ).getDate();
         for (let day = 1; day <= daysInMonth; day++) {
-          const date = new Date(controlYear, controlMonth, day);
+          const date = new Date(controlYear, controlMonth - 1, day);
           const dateStr = formatDate(date);
           const option = document.createElement("option");
           option.value = dateStr;
@@ -498,11 +586,11 @@
 
         const daysInMonth = new Date(
           controlYear,
-          controlMonth + 1,
+          controlMonth,
           0
         ).getDate();
-        const startDate = new Date(controlYear, controlMonth, 1);
-        const endDate = new Date(controlYear, controlMonth, daysInMonth);
+        const startDate = new Date(controlYear, controlMonth - 1, 1);
+        const endDate = new Date(controlYear, controlMonth - 1, daysInMonth);
 
         while (startDate <= endDate) {
           const dateStr = formatDate(startDate);
@@ -581,34 +669,31 @@
       }
 
       // Function to update row data and totals
-      function updateRow(dateStr, element) {
-        const row = element.closest("tr");
-        if (!row) return;
+      async function updateRow(dateStr, element) {
+        try {
+          const attendance = element.querySelector('select[name="attendance"]').value;
+          const workTime = element.querySelector('select[name="workTime"]').value;
+          const amountTaken = parseFloat(element.querySelector('input[name="amount"]').value) || 0;
 
-        const attendance = row.querySelector(".attendance").value;
-        const workTime = row.querySelector(".worktime").value;
-        const amountTaken =
-          parseInt(row.querySelector(".amount-taken").value) || 0;
+          // Update local data
+          tableData[dateStr] = { attendance, workTime, amountTaken };
 
-        // Check if this is a meaningful update (not just loading default values)
-        const rowData = tableData[dateStr];
-        if (
-          rowData.attendance !== attendance ||
-          rowData.workTime !== workTime ||
-          rowData.amountTaken !== amountTaken
-        ) {
+          // Save to MongoDB
+          await saveTableData();
+
+          // Update UI
+          updateWorkTimeDropdown(element);
+          applyStyles(element);
+          updateTotals();
           hasEntryBeenMade = true;
-          // Disable daily amount after first meaningful entry
-          document.getElementById("dailyAmount").disabled = true;
+
+          // Disable daily amount input after first entry
+          const dailyAmountInput = document.getElementById("dailyAmount");
+          if (dailyAmountInput) dailyAmountInput.disabled = true;
+        } catch (error) {
+          console.error(`Error updating row for ${dateStr}:`, error);
+          alert(`Failed to update attendance: ${error.message}`);
         }
-
-        tableData[dateStr] = { attendance, workTime, amountTaken };
-        localStorage.setItem("tableData", JSON.stringify(tableData));
-
-        updateWorkTimeDropdown(row);
-        applyStyles(row);
-        updateTotals();
-        updateControlForm(dateStr);
       }
 
       // Function to update the control form when a row is selected
@@ -631,32 +716,31 @@
       }
 
       // Function to update a row using the control form
-      function updateSelectedRow() {
-        const dateStr = document.getElementById("controlDate").value;
-        const attendance = document.getElementById("controlAttendance").value;
-        const workTime = document.getElementById("controlWorkTime").value;
-        const amountTaken =
-          parseInt(document.getElementById("controlAmountTaken").value) || 0;
+      async function updateSelectedRow() {
+        try {
+          const dateStr = document.getElementById("controlDate").value;
+          const attendance = document.getElementById("controlAttendance").value;
+          const workTime = document.getElementById("controlWorkTime").value;
+          const amountTaken = parseFloat(document.getElementById("controlAmount").value) || 0;
 
-        // Check if this is a meaningful update
-        const rowData = tableData[dateStr] || {
-          attendance: "NO",
-          workTime: "0",
-          amountTaken: 0,
-        };
-        if (
-          rowData.attendance !== attendance ||
-          rowData.workTime !== workTime ||
-          rowData.amountTaken !== amountTaken
-        ) {
+          // Update local data
+          tableData[dateStr] = { attendance, workTime, amountTaken };
+
+          // Save to MongoDB
+          await saveTableData();
+
+          // Update UI
+          generateTable();
+          updateTotals();
           hasEntryBeenMade = true;
-          // Disable daily amount after first meaningful entry
-          document.getElementById("dailyAmount").disabled = true;
-        }
 
-        tableData[dateStr] = { attendance, workTime, amountTaken };
-        localStorage.setItem("tableData", JSON.stringify(tableData));
-        generateTable();
+          // Disable daily amount input after first entry
+          const dailyAmountInput = document.getElementById("dailyAmount");
+          if (dailyAmountInput) dailyAmountInput.disabled = true;
+        } catch (error) {
+          console.error('Error updating selected row:', error);
+          alert(`Failed to update attendance: ${error.message}`);
+        }
       }
 
       // Function to update totals
@@ -839,9 +923,8 @@
 
       // Function to reset the application
       function resetApplication() {
-        // Clear localStorage and tableData
+        // Clear tableData
         tableData = {};
-        localStorage.removeItem("tableData");
 
         // Reset daily amount input and enable it
         const dailyAmountInput = document.getElementById("dailyAmount");
@@ -868,38 +951,48 @@
         window.location.href = '/';
       }
 
-      // Initialize the page - will be overridden by attendance.js
-      window.onload = function () {
-        const today = new Date();
-        document.getElementById("controlMonth").value = today.getMonth();
-        populateYearDropdown();
-        document.getElementById("controlYear").value = today.getFullYear();
-        populateDateDropdown();
-        updateMonthDisplay();
-        generateTable();
-        const firstDate = formatDate(
-          new Date(today.getFullYear(), today.getMonth(), 1)
-        );
-        updateControlForm(firstDate);
+      // Add event listeners for month and year changes
+      document
+        .getElementById("controlMonth")
+        .addEventListener("change", async () => {
+          currentMonth = parseInt(document.getElementById("controlMonth").value);
+          await loadTableData(); // Load data for new month from MongoDB
+          populateDateDropdown();
+          updateMonthDisplay();
+          generateTable();
+          updateControlForm(document.getElementById("controlDate").value);
+        });
 
-        // Add event listeners for month and year changes
-        document
-          .getElementById("controlMonth")
-          .addEventListener("change", () => {
-            populateDateDropdown();
-            updateMonthDisplay();
-            generateTable();
-            updateControlForm(document.getElementById("controlDate").value);
-          });
+      document
+        .getElementById("controlYear")
+        .addEventListener("change", async () => {
+          currentYear = parseInt(document.getElementById("controlYear").value);
+          await loadTableData(); // Load data for new year from MongoDB
+          populateDateDropdown();
+          updateMonthDisplay();
+          generateTable();
+          updateControlForm(document.getElementById("controlDate").value);
+        });
 
-        document
-          .getElementById("controlYear")
-          .addEventListener("change", () => {
-            populateDateDropdown();
-            updateMonthDisplay();
-            generateTable();
-            updateControlForm(document.getElementById("controlDate").value);
-          });
+      // Initialize page
+      window.onload = async function() {
+        try {
+          // Set initial month and year in dropdowns
+          document.getElementById("controlMonth").value = currentMonth;
+          document.getElementById("controlYear").value = currentYear;
+          
+          // Load initial data
+          await loadTableData();
+          
+          // Initialize UI
+          populateDateDropdown();
+          updateMonthDisplay();
+          generateTable();
+          updateControlForm(document.getElementById("controlDate").value);
+        } catch (error) {
+          console.error('Error initializing page:', error);
+          alert(`Failed to initialize page: ${error.message}`);
+        }
       };
     </script>
     <!-- Include our backend integration script -->

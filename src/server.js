@@ -2,9 +2,8 @@ const fastify = require('fastify')({ logger: true });
 const path = require('path');
 const fs = require('fs');
 const { connectToDatabase } = require('./config/db');
+const config = require('./config/config');
 require('dotenv').config();
-
-const PORT = process.env.PORT || 3000;
 
 // Register plugins
 fastify.register(require('@fastify/cors'), {
@@ -13,7 +12,7 @@ fastify.register(require('@fastify/cors'), {
 
 // Register JWT plugin
 fastify.register(require('@fastify/jwt'), {
-  secret: process.env.JWT_SECRET
+  secret: config.jwtSecret
 });
 
 // Serve static files - CSS, JS, etc.
@@ -54,28 +53,28 @@ fastify.get('/history', (req, reply) => {
 });
 
 // Error handler
-fastify.setErrorHandler((error, request, reply) => {
+fastify.setErrorHandler(function (error, request, reply) {
   fastify.log.error(error);
-  reply.code(500).send({ 
+  reply.status(500).send({ 
     success: false, 
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    message: error.message || 'Internal Server Error'
   });
 });
 
 // Start server
-const start = async () => {
+async function start() {
   try {
-    // Connect to MongoDB
+    // Connect to MongoDB first
     await connectToDatabase();
-    
-    // Start Fastify server
-    await fastify.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`Server is running on port ${PORT}`);
-  } catch (err) {
-    fastify.log.error(err);
+    console.log('Connected to MongoDB');
+
+    // Then start the server
+    await fastify.listen({ port: config.port, host: '0.0.0.0' });
+    console.log(`Server is running on port ${config.port}`);
+  } catch (error) {
+    fastify.log.error(error);
     process.exit(1);
   }
-};
+}
 
-start(); 
+start();
